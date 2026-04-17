@@ -1,0 +1,87 @@
+/**
+ * UseCase3InventorySetup
+ * 
+ * This class demonstrates centralized inventory management using HashMap.
+ * It replaces scattered availability variables with a single source of truth.
+ * 
+ * @author YourName
+ * @version 3.1
+ */
+
+import java.util.HashMap;
+import java.util.Map;
+
+// Inventory class
+class RoomInventory {
+
+    private Map<String, Integer> availabilityMap;
+
+    // Constructor initializes inventory
+    public RoomInventory() {
+        availabilityMap = new HashMap<>();
+
+        // Initial room availability
+        availabilityMap.put("Single Room", 5);
+        availabilityMap.put("Double Room", 3);
+        availabilityMap.put("Suite Room", 2);
+    }
+
+    // Get availability of a specific room type
+    public int getAvailability(String roomType) {
+        return availabilityMap.getOrDefault(roomType, 0);
+    }
+
+    // Update availability (increase/decrease)
+    public void updateAvailability(String roomType, int change) {
+        int current = availabilityMap.getOrDefault(roomType, 0);
+        int updated = current + change;
+
+        if (updated < 0) {
+            System.out.println("Error: Cannot reduce below zero for " + roomType);
+            return;
+        }
+
+        availabilityMap.put(roomType, updated);
+    }
+
+    // Display full inventory
+    public void displayInventory() {
+        System.out.println("\n--- Current Room Inventory ---\n");
+
+        for (Map.Entry<String, Integer> entry : availabilityMap.entrySet()) {
+            System.out.println("Room Type       : " + entry.getKey());
+            System.out.println("Available Rooms : " + entry.getValue());
+            System.out.println("----------------------------------");
+        }
+    }
+}
+
+// Main class
+public class UseCase3InventorySetup {
+
+    public static void main(String[] args) {
+
+        System.out.println("======================================");
+        System.out.println("   Welcome to Book My Stay App");
+        System.out.println("   Hotel Booking System v3.1");
+        System.out.println("======================================");
+
+        // Initialize inventory
+        RoomInventory inventory = new RoomInventory();
+
+        // Display initial inventory
+        inventory.displayInventory();
+
+        // Simulate updates
+        System.out.println("\nUpdating Inventory...\n");
+
+        inventory.updateAvailability("Single Room", -1); // booking
+        inventory.updateAvailability("Suite Room", -1);  // booking
+        inventory.updateAvailability("Double Room", +2); // new rooms added
+
+        // Display updated inventory
+        inventory.displayInventory();
+
+        System.out.println("\nThank you for using Book My Stay App!");
+    }
+}
