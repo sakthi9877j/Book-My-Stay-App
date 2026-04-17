@@ -1,0 +1,166 @@
+/**
+ * UseCase9ErrorHandlingValidation
+ * 
+ * Demonstrates input validation and error handling using custom exceptions.
+ * Ensures system stability by preventing invalid operations.
+ * 
+ * @author YourName
+ * @version 9.0
+ */
+
+import java.util.*;
+
+// ----------- Custom Exceptions -----------
+
+class InvalidRoomTypeException extends Exception {
+    public InvalidRoomTypeException(String message) {
+        super(message);
+    }
+}
+
+class InsufficientInventoryException extends Exception {
+    public InsufficientInventoryException(String message) {
+        super(message);
+    }
+}
+
+// ----------- Reservation -----------
+
+class Reservation {
+    private String guestName;
+    private String roomType;
+
+    public Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
+    }
+
+    public String getGuestName() {
+        return guestName;
+    }
+
+    public String getRoomType() {
+        return roomType;
+    }
+}
+
+// ----------- Inventory -----------
+
+class RoomInventory {
+
+    private Map<String, Integer> availability = new HashMap<>();
+
+    public RoomInventory() {
+        availability.put("Single Room", 1);
+        availability.put("Double Room", 1);
+    }
+
+    public int getAvailability(String type) {
+        return availability.getOrDefault(type, -1);
+    }
+
+    public void decrement(String type) throws InsufficientInventoryException {
+        int current = getAvailability(type);
+
+        if (current <= 0) {
+            throw new InsufficientInventoryException(
+                "No available rooms for: " + type
+            );
+        }
+
+        availability.put(type, current - 1);
+    }
+}
+
+// ----------- Validator -----------
+
+class BookingValidator {
+
+    private Set<String> validRoomTypes;
+
+    public BookingValidator() {
+        validRoomTypes = new HashSet<>();
+        validRoomTypes.add("Single Room");
+        validRoomTypes.add("Double Room");
+        validRoomTypes.add("Suite Room");
+    }
+
+    public void validate(Reservation r, RoomInventory inventory)
+            throws InvalidRoomTypeException, InsufficientInventoryException {
+
+        // Validate room type
+        if (!validRoomTypes.contains(r.getRoomType())) {
+            throw new InvalidRoomTypeException(
+                "Invalid room type: " + r.getRoomType()
+            );
+        }
+
+        // Validate availability
+        if (inventory.getAvailability(r.getRoomType()) <= 0) {
+            throw new InsufficientInventoryException(
+                "No rooms available for: " + r.getRoomType()
+            );
+        }
+    }
+}
+
+// ----------- Booking Service -----------
+
+class BookingService {
+
+    private RoomInventory inventory;
+    private BookingValidator validator;
+
+    public BookingService(RoomInventory inventory) {
+        this.inventory = inventory;
+        this.validator = new BookingValidator();
+    }
+
+    public void processBooking(Reservation r) {
+
+        try {
+            // Fail-fast validation
+            validator.validate(r, inventory);
+
+            // If valid → proceed
+            inventory.decrement(r.getRoomType());
+
+            System.out.println("Booking Successful for " + r.getGuestName()
+                    + " (" + r.getRoomType() + ")");
+
+        } catch (InvalidRoomTypeException | InsufficientInventoryException e) {
+            // Graceful failure
+            System.out.println("Booking Failed: " + e.getMessage());
+        }
+    }
+}
+
+// ----------- Main Class -----------
+
+public class UseCase9ErrorHandlingValidation {
+
+    public static void main(String[] args) {
+
+        System.out.println("======================================");
+        System.out.println("   Welcome to Book My Stay App");
+        System.out.println("   Hotel Booking System v9.0");
+        System.out.println("======================================");
+
+        RoomInventory inventory = new RoomInventory();
+        BookingService service = new BookingService(inventory);
+
+        // Test cases
+
+        // Valid booking
+        service.processBooking(new Reservation("Alice", "Single Room"));
+
+        // Invalid room type
+        service.processBooking(new Reservation("Bob", "Luxury Room"));
+
+        // No availability (after first booking)
+        service.processBooking(new Reservation("Charlie", "Single Room"));
+
+        System.out.println("\nSystem continues running safely.");
+        System.out.println("Thank you for using Book My Stay App!");
+    }
+}
