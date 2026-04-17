@@ -1,0 +1,205 @@
+/**
+ * UseCase10BookingCancellation
+ * 
+ * Demonstrates safe cancellation of bookings with proper rollback.
+ * Uses Stack (LIFO) to track released room IDs.
+ * Ensures inventory consistency and prevents invalid cancellations.
+ * 
+ * @author YourName
+ * @version 10.0
+ */
+
+import java.util.*;
+
+// ----------- Reservation -----------
+
+class Reservation {
+    private String reservationId;
+    private String guestName;
+    private String roomType;
+
+    public Reservation(String reservationId, String guestName, String roomType) {
+        this.reservationId = reservationId;
+        this.guestName = guestName;
+        this.roomType = roomType;
+    }
+
+    public String getReservationId() {
+        return reservationId;
+    }
+
+    public String getRoomType() {
+        return roomType;
+    }
+
+    public void display() {
+        System.out.println("Reservation ID : " + reservationId);
+        System.out.println("Guest Name     : " + guestName);
+        System.out.println("Room Type      : " + roomType);
+    }
+}
+
+// ----------- Inventory -----------
+
+class RoomInventory {
+    private Map<String, Integer> availability = new HashMap<>();
+
+    public RoomInventory() {
+        availability.put("Single Room", 1);
+        availability.put("Double Room", 1);
+    }
+
+    public void increment(String type) {
+        availability.put(type, availability.getOrDefault(type, 0) + 1);
+    }
+
+    public void display() {
+        System.out.println("\n--- Inventory ---");
+        for (String type : availability.keySet()) {
+            System.out.println(type + " : " + availability.get(type));
+        }
+    }
+}
+
+// ----------- Allocation Tracker -----------
+
+class AllocationTracker {
+
+    // reservationId → roomId
+    private Map<String, String> allocationMap = new HashMap<>();
+
+    public void addAllocation(String reservationId, String roomId) {
+        allocationMap.put(reservationId, roomId);
+    }
+
+    public String removeAllocation(String reservationId) {
+        return allocationMap.remove(reservationId);
+    }
+
+    public boolean exists(String reservationId) {
+        return allocationMap.containsKey(reservationId);
+    }
+}
+
+// ----------- Booking History -----------
+
+class BookingHistory {
+
+    private List<Reservation> history = new ArrayList<>();
+
+    public void add(Reservation r) {
+        history.add(r);
+    }
+
+    public boolean remove(String reservationId) {
+        return history.removeIf(r -> r.getReservationId().equals(reservationId));
+    }
+
+    public void display() {
+        System.out.println("\n--- Booking History ---");
+        for (Reservation r : history) {
+            r.display();
+            System.out.println("----------------------------------");
+        }
+    }
+}
+
+// ----------- Cancellation Service -----------
+
+class CancellationService {
+
+    private RoomInventory inventory;
+    private AllocationTracker tracker;
+    private BookingHistory history;
+
+    // Stack for rollback tracking
+    private Stack<String> rollbackStack = new Stack<>();
+
+    public CancellationService(RoomInventory inventory,
+                               AllocationTracker tracker,
+                               BookingHistory history) {
+        this.inventory = inventory;
+        this.tracker = tracker;
+        this.history = history;
+    }
+
+    public void cancelReservation(String reservationId, String roomType) {
+
+        System.out.println("\nProcessing cancellation for: " + reservationId);
+
+        // Validate existence
+        if (!tracker.exists(reservationId)) {
+            System.out.println("Cancellation Failed: Reservation not found or already cancelled.");
+            return;
+        }
+
+        // Step 1: Remove allocation
+        String roomId = tracker.removeAllocation(reservationId);
+
+        // Step 2: Push to rollback stack
+        rollbackStack.push(roomId);
+
+        // Step 3: Restore inventory
+        inventory.increment(roomType);
+
+        // Step 4: Remove from history
+        history.remove(reservationId);
+
+        // Confirmation
+        System.out.println("Cancellation Successful!");
+        System.out.println("Released Room ID: " + roomId);
+    }
+
+    public void displayRollbackStack() {
+        System.out.println("\n--- Rollback Stack (Recently Released Rooms) ---");
+        for (String id : rollbackStack) {
+            System.out.println(id);
+        }
+    }
+}
+
+// ----------- Main Class -----------
+
+public class UseCase10BookingCancellation {
+
+    public static void main(String[] args) {
+
+        System.out.println("======================================");
+        System.out.println("   Welcome to Book My Stay App");
+        System.out.println("   Hotel Booking System v10.0");
+        System.out.println("======================================");
+
+        // Initialize components
+        RoomInventory inventory = new RoomInventory();
+        AllocationTracker tracker = new AllocationTracker();
+        BookingHistory history = new BookingHistory();
+
+        // Simulate confirmed bookings
+        Reservation r1 = new Reservation("R101", "Alice", "Single Room");
+        Reservation r2 = new Reservation("R102", "Bob", "Double Room");
+
+        tracker.addAllocation("R101", "SR-1");
+        tracker.addAllocation("R102", "DR-1");
+
+        history.add(r1);
+        history.add(r2);
+
+        // Initialize cancellation service
+        CancellationService service =
+                new CancellationService(inventory, tracker, history);
+
+        // Perform cancellations
+        service.cancelReservation("R101", "Single Room");
+
+        // Attempt invalid cancellation
+        service.cancelReservation("R999", "Single Room");
+
+        // Display final state
+        history.display();
+        inventory.display();
+        service.displayRollbackStack();
+
+        System.out.println("\nSystem state restored successfully.");
+        System.out.println("Thank you for using Book My Stay App!");
+    }
+}
