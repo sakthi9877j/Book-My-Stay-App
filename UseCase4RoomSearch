@@ -1,0 +1,154 @@
+/**
+ * UseCase4RoomSearch
+ * 
+ * This class demonstrates read-only room search functionality.
+ * It ensures that availability is only viewed and never modified.
+ * 
+ * @author YourName
+ * @version 4.0
+ */
+
+import java.util.*;
+
+// ----------- Domain Model (Room) -----------
+
+abstract class Room {
+    private int beds;
+    private double price;
+
+    public Room(int beds, double price) {
+        this.beds = beds;
+        this.price = price;
+    }
+
+    public int getBeds() {
+        return beds;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public abstract String getRoomType();
+
+    public void displayDetails() {
+        System.out.println("Room Type  : " + getRoomType());
+        System.out.println("Beds       : " + beds);
+        System.out.println("Price      : ₹" + price);
+    }
+}
+
+class SingleRoom extends Room {
+    public SingleRoom() {
+        super(1, 1500);
+    }
+
+    public String getRoomType() {
+        return "Single Room";
+    }
+}
+
+class DoubleRoom extends Room {
+    public DoubleRoom() {
+        super(2, 2500);
+    }
+
+    public String getRoomType() {
+        return "Double Room";
+    }
+}
+
+class SuiteRoom extends Room {
+    public SuiteRoom() {
+        super(3, 5000);
+    }
+
+    public String getRoomType() {
+        return "Suite Room";
+    }
+}
+
+// ----------- Inventory (State Holder) -----------
+
+class RoomInventory {
+
+    private Map<String, Integer> availabilityMap;
+
+    public RoomInventory() {
+        availabilityMap = new HashMap<>();
+        availabilityMap.put("Single Room", 5);
+        availabilityMap.put("Double Room", 0); // intentionally unavailable
+        availabilityMap.put("Suite Room", 2);
+    }
+
+    // Read-only access
+    public int getAvailability(String roomType) {
+        return availabilityMap.getOrDefault(roomType, 0);
+    }
+
+    public Set<String> getAllRoomTypes() {
+        return availabilityMap.keySet();
+    }
+}
+
+// ----------- Search Service (Read-only logic) -----------
+
+class RoomSearchService {
+
+    private RoomInventory inventory;
+    private Map<String, Room> roomCatalog;
+
+    public RoomSearchService(RoomInventory inventory) {
+        this.inventory = inventory;
+
+        // Room catalog (domain objects)
+        roomCatalog = new HashMap<>();
+        roomCatalog.put("Single Room", new SingleRoom());
+        roomCatalog.put("Double Room", new DoubleRoom());
+        roomCatalog.put("Suite Room", new SuiteRoom());
+    }
+
+    public void searchAvailableRooms() {
+
+        System.out.println("\n--- Available Rooms ---\n");
+
+        for (String roomType : inventory.getAllRoomTypes()) {
+
+            int available = inventory.getAvailability(roomType);
+
+            // Defensive check: only show available rooms
+            if (available > 0) {
+                Room room = roomCatalog.get(roomType);
+
+                room.displayDetails();
+                System.out.println("Available Rooms: " + available);
+                System.out.println("----------------------------------");
+            }
+        }
+    }
+}
+
+// ----------- Main Class -----------
+
+public class UseCase4RoomSearch {
+
+    public static void main(String[] args) {
+
+        System.out.println("======================================");
+        System.out.println("   Welcome to Book My Stay App");
+        System.out.println("   Hotel Booking System v4.0");
+        System.out.println("======================================");
+
+        // Initialize inventory
+        RoomInventory inventory = new RoomInventory();
+
+        // Initialize search service
+        RoomSearchService searchService = new RoomSearchService(inventory);
+
+        // Perform search (read-only)
+        searchService.searchAvailableRooms();
+
+        System.out.println("\nSearch completed successfully.");
+        System.out.println("Thank you for using Book My Stay App!");
+    }
+}
