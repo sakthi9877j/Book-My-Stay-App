@@ -1,0 +1,165 @@
+/**
+ * UseCase12DataPersistenceRecovery
+ * 
+ * Demonstrates persistence and recovery using serialization.
+ * System state (inventory + bookings) is saved to a file and restored on restart.
+ * 
+ * Handles missing/corrupted file gracefully.
+ * 
+ * @author YourName
+ * @version 12.0
+ */
+
+import java.io.*;
+import java.util.*;
+
+// ----------- Serializable Reservation -----------
+
+class Reservation implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private String reservationId;
+    private String guestName;
+    private String roomType;
+
+    public Reservation(String reservationId, String guestName, String roomType) {
+        this.reservationId = reservationId;
+        this.guestName = guestName;
+        this.roomType = roomType;
+    }
+
+    public String getReservationId() {
+        return reservationId;
+    }
+
+    public void display() {
+        System.out.println(reservationId + " | " + guestName + " | " + roomType);
+    }
+}
+
+// ----------- System State (Serializable Snapshot) -----------
+
+class SystemState implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    Map<String, Integer> inventory;
+    List<Reservation> bookings;
+
+    public SystemState(Map<String, Integer> inventory, List<Reservation> bookings) {
+        this.inventory = inventory;
+        this.bookings = bookings;
+    }
+}
+
+// ----------- Persistence Service -----------
+
+class PersistenceService {
+
+    private static final String FILE_NAME = "booking_state.dat";
+
+    // Save state
+    public void saveState(SystemState state) {
+
+        try (ObjectOutputStream oos =
+                     new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
+
+            oos.writeObject(state);
+            System.out.println("System state saved successfully.");
+
+        } catch (IOException e) {
+            System.out.println("Error saving state: " + e.getMessage());
+        }
+    }
+
+    // Load state
+    public SystemState loadState() {
+
+        File file = new File(FILE_NAME);
+
+        if (!file.exists()) {
+            System.out.println("No saved state found. Starting fresh system.");
+            return null;
+        }
+
+        try (ObjectInputStream ois =
+                     new ObjectInputStream(new FileInputStream(FILE_NAME))) {
+
+            return (SystemState) ois.readObject();
+
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Corrupted state file. Starting fresh system.");
+            return null;
+        }
+    }
+}
+
+// ----------- Main Class -----------
+
+public class UseCase12DataPersistenceRecovery {
+
+    public static void main(String[] args) {
+
+        System.out.println("======================================");
+        System.out.println("   Welcome to Book My Stay App");
+        System.out.println("   Hotel Booking System v12.0");
+        System.out.println("======================================");
+
+        PersistenceService persistence = new PersistenceService();
+
+        // Try recovery
+        SystemState state = persistence.loadState();
+
+        Map<String, Integer> inventory;
+        List<Reservation> bookings;
+
+        if (state != null) {
+            inventory = state.inventory;
+            bookings = state.bookings;
+            System.out.println("\nSystem recovered from saved state.");
+        } else {
+            // Fresh initialization
+            inventory = new HashMap<>();
+            inventory.put("Single Room", 2);
+            inventory.put("Double Room", 2);
+
+            bookings = new ArrayList<>();
+            System.out.println("\nFresh system initialized.");
+        }
+
+        // Simulate new booking
+        if (inventory.get("Single Room") > 0) {
+            inventory.put("Single Room", inventory.get("Single Room") - 1);
+
+            Reservation r = new Reservation(
+                    "R" + (bookings.size() + 1),
+                    "Alice",
+                    "Single Room"
+            );
+
+            bookings.add(r);
+
+            System.out.println("\nNew Booking Added:");
+            r.display();
+        } else {
+            System.out.println("No availability for Single Room");
+        }
+
+        // Show current state
+        System.out.println("\n--- Current Bookings ---");
+        for (Reservation r : bookings) {
+            r.display();
+        }
+
+        System.out.println("\n--- Inventory ---");
+        for (String type : inventory.keySet()) {
+            System.out.println(type + " : " + inventory.get(type));
+        }
+
+        // Save state before exit
+        SystemState newState = new SystemState(inventory, bookings);
+        persistence.saveState(newState);
+
+        System.out.println("\nSystem shutdown complete with persistence.");
+        System.out.println("Thank you for using Book My Stay App!");
+    }
+}
